@@ -1,4 +1,4 @@
-package net.floodlightcontroller.netmerging;
+package net.floodlightcontroller.networkmerging;
 
 import java.nio.ByteBuffer;
 
@@ -61,6 +61,12 @@ public class NetworkUtility {
 
 	}
 	
+	NetworkUtility(IOFSwitch sw ,OFPhysicalPort po){
+		this.inputSwitch = sw;
+		this.inputPort = po;
+
+	}
+	
 	public boolean  isequal( NetworkUtility second){
 		if(this.inputSwitch.equals(second.inputSwitch)){
 			if(this.inputPort.equals(second.inputPort)) return true;	
@@ -73,11 +79,17 @@ public class NetworkUtility {
 		inputSwitch = inswitch;
 		inputPort = inport;
 		
+	}
+	
+	public void setdata(IOFSwitch inswitch , OFPhysicalPort inport){
+		inputSwitch = inswitch;
+		inputPort = inport;
 		
 	}
+	
 	public String toString(){
 		String mystring ;
-		mystring  = "my switch id : " + inputSwitch.getId() + "\n my port id : "+inputPort.getPortNumber()+" set num : "+setnum +" \n"+
+		mystring  = "my switch id : " + inputSwitch.getId() + "\n my port id : "+inputPort.getPortNumber()+" sdn num : "+sdnid +" \n"+
 					"root id : "+rootset+" cost : " +HexString.toHexString(legctinf.cost)+"\n"+
 					"packet data "+ HexString.toHexString(packetData);
 		return mystring;
@@ -85,6 +97,18 @@ public class NetworkUtility {
 		
 	}
 	
+	public long getsdin(){
+		return this.sdnid;
+	}
+	
+	
+	public long getrootset(){
+		return this.rootset;
+	}
+	
+	public byte[] getpacketdat(){
+		return this.packetData;
+	}
 
 	
 }
