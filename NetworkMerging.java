@@ -1,4 +1,4 @@
-package net.floodlightcontroller.netmerging;
+package net.floodlightcontroller.networkmerging;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -43,12 +43,19 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 	protected Set macAddresses;
 	protected static Logger logger;
 	protected ArrayList<NetworkUtility> borderswitch ;
+	protected ArrayList<NetworkUtility> blockSwitch ;
+	protected ArrayList<NetworkUtility> remainSwitch ;
 	protected ArrayList<Island> islandlist;
 	private boolean ispass;
 	private  MyTimer timejob;
+	private Thread t1;
+	private long receivenum = 0;
 	
+	
+	private final int BODRERNUMBER = 23;
 	
 	public static final String MODULE_NAME = "networkmerging";
+	private static final String Hello_message= "welcome to networkMerging \n";
 	
 	@Override
 	public String getName() {
@@ -64,6 +71,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
 		// TODO Auto-generated method stub
 		return "topology".equals(name);
+		//return false;
 	}
 
 	@Override
@@ -83,6 +91,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 	    Collection<Class<? extends IFloodlightService>> l =
 	        new ArrayList<Class<? extends IFloodlightService>>();
 	    l.add(IFloodlightProviderService.class);
+	    l.add(ITopologyService.class);
 	    return l;
 	}
 
@@ -91,17 +100,22 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 	    floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 	    macAddresses = new ConcurrentSkipListSet<Long>();
 	    logger = LoggerFactory.getLogger(NetworkMerging.class);
-	    logger.info("welcome to networkMerging \n");
+	    topology = context.getServiceImpl(ITopologyService.class);
 	    ispass = false;
 	    borderswitch = new ArrayList<NetworkUtility>();
+		blockSwitch = new ArrayList<NetworkUtility>();
+		remainSwitch = new ArrayList<NetworkUtility>();
 	    islandlist = new ArrayList<Island>();
 	    timejob = new MyTimer();
+	    t1 = new Thread(timejob, "T1");    
+	    
+	    logger.info(Hello_message);
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
 	    floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-    	Thread t1 = new Thread(timejob, "T1");        
+    	    
         //t1.start();
 	}
 
@@ -135,6 +149,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 	     byte packetindata[] = new byte [500];
 		 OFMatch match = new OFMatch();
 		 match.loadFromPacket(pi.getPacketData(), pi.getInPort());
+		 NetworkUtility nu ;
 	 	
 		 mydata = eth.serialize();
 		 OFPortState mystate;	
@@ -146,9 +161,13 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 		 OFPhysicalPort myport = mypacketInportfeature.toOFPhysicalPort();   
 		 
 		 
+		 
+		 
+		 
 		 if(eth.getDestinationMAC() .toString().endsWith("FF:FF:00:00:00:00") && HexString.toHexString(mydata).length()==203){
-				logger.info("this is BUPD drop it!!!");
+				//logger.info("this is BUPD drop it!!!");
 				//NetworkUtility tmpborder = new NetworkUtility(sw, myport, mydata, pi);
+				//logger.info(tmpborder.toString());
 				//checknewinswitch(tmpborder);
 				/*
 				   OFPortMod mymod = (OFPortMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.PORT_MOD);
@@ -164,13 +183,47 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 				   }
 				   sw.flush();
 				   logger.info("port down set!!!!!");*/
-				NetworkUtility nu =new NetworkUtility(sw,myport,mydata,pi);
-				checknewinswitch(nu);
+				
+			 
+				
+				if( receivenum >= 6*BODRERNUMBER ){
+					long sdnid = topology.getL2DomainId(sw.getId());
+					nu = new NetworkUtility(sw,myport,packetindata,pi,sdnid);
+					checknewinswitch(nu);
+				}
+				
+				receivenum ++;
 				return Command.STOP;
 				
-		 }
+		 }else{
+			 
+			 if( receivenum > 7*BODRERNUMBER  ){
+				 
+				 if(!ispass){
+					 ispass = true;
+					 t1.run();
+				 
+					 
+				 }
+				 
+			 }
 			
-			return Command.CONTINUE;
+			 
+			 
+			 Iterator<NetworkUtility> itr = blockSwitch.iterator();
+			 nu = new NetworkUtility(sw,myport);
+			 
+			 while(itr.hasNext()){
+				 NetworkUtility tmp = itr.next();
+				 if(tmp.isequal(nu)) return Command.STOP;
+				 
+			 }	
+			 
+			 
+		 }
+		 			
+		 
+		 return Command.CONTINUE;
      	
 		 
 	 }
@@ -182,6 +235,8 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 			 if(tmp.isequal(nu)) return;
 		 }
 		 borderswitch.add(nu);
+		 //logger.info(nu.toString());
+		 remainSwitch.add(nu);
 		 
 	 }
 		 	
@@ -192,39 +247,56 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 
 	        }
 	        		
+	        
+	        /*
+	         * this is run
+	         * 
+	         * 
+	         * 
+	         *
+	        */
 			
 			@Override
 			public void run() {
-				
-				try {
-					Thread.sleep(10000);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
+								
 				logger.info("start running");
+
 				getboarderswitch();
-				lsitall();		
+				lsitall();
+				multiPathElimate();
+
+				countremain();
+				logger.info(listList(remainSwitch));
+				loopElimate();
 			}
 				
-			private void getboarderswitch(){
-				Iterator<Island> itr = islandlist.iterator();
+			
+			
+			private void getboarderswitch(){				
 				Iterator<NetworkUtility> swtr = borderswitch.iterator();
-				
+								
 				while(swtr.hasNext()){
+					Iterator<Island> itr = islandlist.iterator();
 					NetworkUtility nu = swtr.next();
+					boolean islast = false;
+					
 					while(itr.hasNext()){
+						
 						Island tmp = itr.next();
 						NetworkUtility tmpnu = tmp.island.get(0);
-						if(topology.inSameL2Domain(tmpnu.inputSwitch.getId(), nu.inputSwitch.getId())){
+						if(topology.inSameL2Domain(tmpnu.inputSwitch.getId(), nu.inputSwitch.getId()) && nu.rootset == tmpnu.rootset ){
 							tmp.island.add(nu);
+							islast = true;
+							
 						}
 					}
 					
-					
-					Island newisland = new Island();
-					newisland.island.add(nu);
+					if(!islast){
+						Island newisland = new Island();
+						newisland.island.add(nu);
+						islandlist.add(newisland);
+					}
+
 				}
 			}
 			
@@ -239,8 +311,132 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 						logger.info(isitr.next().toString());
 						
 					}
+					number++;
 				}
 			}
+			
+			private void multiPathElimate(){
+				Iterator<Island> itr = islandlist.iterator();
+
+				while(itr.hasNext()){
+					Island tmp = itr.next();
+					Iterator<NetworkUtility> isitr =  tmp.island.iterator();
+					
+					if(isitr.hasNext()){
+						isitr.next();
+					}else continue;
+
+					while(isitr.hasNext()){
+						NetworkUtility nu = isitr.next();
+						portdownAt(nu);
+						
+					}
+				}
+				
+			}
+			
+			private void loopElimate(){
+				Iterator<NetworkUtility> reitr = remainSwitch.iterator();
+				
+				while(reitr.hasNext()){
+					NetworkUtility head =reitr.next();
+					
+					
+					logger.info("haha");
+					ArrayList<NetworkUtility> tmplist = (ArrayList<NetworkUtility>) remainSwitch.clone();
+					tmplist.remove(head);
+					
+					NetworkUtility tmp = looparound(head, head, tmplist, false);
+					
+					
+					
+					if(tmp != null){
+						
+						portdownAt(tmp);
+						remainSwitch.remove(tmp);
+						reitr = remainSwitch.iterator();
+						logger.info(tmp.toString());
+						logger.info("haha");
+					}
+
+					
+				}
+			}
+			
+			private NetworkUtility looparound(NetworkUtility head,NetworkUtility next,ArrayList<NetworkUtility> list,boolean islegacy){
+				
+				Iterator<NetworkUtility> itr = list.iterator(); 
+				while(itr.hasNext()){
+					NetworkUtility nu = itr.next();
+					
+					if(islegacy){
+						if(nu.sdnid == next.sdnid){
+							list.remove(nu);
+							return looparound(head,nu,list,false);			
+						}
+					}else{
+						if(nu.rootset == next.rootset)
+							
+							if(nu.sdnid == head.sdnid){
+								return nu;
+							}else{
+								list.remove(nu);
+								return looparound(head,nu,list,true);
+							}
+							
+					}
+					
+				}
+
+				
+				return null;
+				
+			}
+			
+			private void portdownAt(NetworkUtility nu){
+				
+				   FloodlightContext cntx = new FloodlightContext();
+				   OFPortMod mymod = (OFPortMod) floodlightProvider.getOFMessageFactory().getMessage(OFType.PORT_MOD);
+				   mymod.setPortNumber(nu.inputPort.getPortNumber());          
+				   mymod.setConfig(OFPhysicalPort.OFPortConfig.OFPPC_PORT_DOWN.getValue());
+				   mymod.setHardwareAddress(nu.inputPort.getHardwareAddress());
+				   mymod.setMask(0xFFFFFFFF);
+				   try {
+					   nu.inputSwitch.write(mymod,cntx);
+				   } catch (IOException e) {
+					   // TODO Auto-generated catch block
+					   e.printStackTrace();
+				   }
+				   nu.inputSwitch.flush();
+				   blockSwitch.add(nu);
+			}
+			
+			private void listIsland(){
+				
+			}
+			private String listList(ArrayList<NetworkUtility> list){
+				Iterator <NetworkUtility> itr = list.iterator();
+				String tmp = "";
+				int number = 0;
+				
+				while(itr.hasNext()){
+					number ++;
+					NetworkUtility nu = itr.next();
+					tmp +="number : " + number + "\n";
+					tmp+= nu.toString();
+					tmp+="\n";
+				}
+				
+				return tmp;
+				
+			}
+
+			
+			private void countremain(){
+				remainSwitch.removeAll(blockSwitch);
+			}
+			
+
 
 
 		}// Mytimer
