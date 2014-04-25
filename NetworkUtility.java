@@ -109,6 +109,20 @@ public class NetworkUtility {
 	public byte[] getpacketdat(){
 		return this.packetData;
 	}
+	
+	public void setdata(byte [] data){
+		this.packetData = data;
+	
+	}
+	
+	public void sdnid(long id){
+		sdnid = id;
+	
+	}
+	
+	public void countdSTPinf(){
+		legctinf = new STP();
+	}
 
 	
 }
