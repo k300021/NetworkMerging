@@ -17,7 +17,15 @@ Fedora 14 and network simulator Estinet
 
 ===============
 
+How to test it:
 
+first u need to install estinet and Fedora 14 (in my algorithm  it deals with STP in estinet different from spec 802.1D)
+
+so if u try to use it in actually network , u have to change some codes.
+
+second change the floodlight resource to include the new module (NetworkMerging)
+
+and last enjoy it!!
 
 
 
