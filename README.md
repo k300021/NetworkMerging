@@ -28,7 +28,7 @@ second change the floodlight resource to include the new module (NetworkMerging)
 and last enjoy it!!
 
 
-============== Method ==============================
+============== 
 Merge the SDN network and legacy network using floodlight
 
 
