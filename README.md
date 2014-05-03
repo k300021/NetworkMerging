@@ -28,10 +28,14 @@ second change the floodlight resource to include the new module (NetworkMerging)
 and last enjoy it!!
 
 
-
+============== Method ==============================
 Merge the SDN network and legacy network using floodlight
 
 
 First, catch the BPDU packet sended by legacy switch, and analyze it to find the information i need.
 
-Secondenary , cut the redunant path by the information i have.
+Secondenary ,reduce the multipath between SDN island and Legacy island (to only one path)
+
+Third , eliminate loop in the topology by using DFS
+
+
