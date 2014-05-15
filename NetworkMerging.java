@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.Set;
 
@@ -47,12 +48,13 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 	protected ArrayList<NetworkUtility> remainSwitch ;
 	protected ArrayList<Island> islandlist;
 	private boolean ispass;
-	private  MyTimer timejob;
+	private  NetworkmergingManager timejob;
 	private Thread t1;
 	private long receivenum = 0;
 	
 	
-	private final int BODRERNUMBER = 23;
+	
+	private final int BODRERNUMBER = 31;
 	
 	public static final String MODULE_NAME = "networkmerging";
 	private static final String Hello_message= "welcome to networkMerging \n";
@@ -106,7 +108,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 		blockSwitch = new ArrayList<NetworkUtility>();
 		remainSwitch = new ArrayList<NetworkUtility>();
 	    islandlist = new ArrayList<Island>();
-	    timejob = new MyTimer();
+	    timejob = new NetworkmergingManager();
 	    t1 = new Thread(timejob, "T1");    
 	    
 	    logger.info(Hello_message);
@@ -186,7 +188,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 				
 			 
 				
-				if( receivenum >= 6*BODRERNUMBER ){
+				if( receivenum >= 6*BODRERNUMBER && receivenum <= 8*BODRERNUMBER){
 					long sdnid = topology.getL2DomainId(sw.getId());
 					nu = new NetworkUtility(sw,myport,packetindata,pi,sdnid);
 					checknewinswitch(nu);
@@ -240,10 +242,10 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 		 
 	 }
 		 	
-	 protected class MyTimer  implements Runnable {
+	 protected class NetworkmergingManager  implements Runnable {
 			
 
-	        public MyTimer() {
+	        public NetworkmergingManager() {
 
 	        }
 	        		
@@ -268,6 +270,8 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 				countremain();
 				logger.info(listList(remainSwitch));
 				loopElimate();
+				//loopElimate();
+				//loopElimate();
 			}
 				
 			
@@ -316,6 +320,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 			}
 			
 			private void multiPathElimate(){
+				
 				Iterator<Island> itr = islandlist.iterator();
 
 				while(itr.hasNext()){
@@ -334,7 +339,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 				}
 				
 			}
-			
+			/*
 			private void loopElimate(){
 				Iterator<NetworkUtility> reitr = remainSwitch.iterator();
 				
@@ -346,23 +351,92 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 					ArrayList<NetworkUtility> tmplist = (ArrayList<NetworkUtility>) remainSwitch.clone();
 					tmplist.remove(head);
 					
-					NetworkUtility tmp = looparound(head, head, tmplist, false);
+					ArrayList<NetworkUtility> tmp = delooparound(head, head, tmplist, false);
 					
+					Iterator<NetworkUtility> tmpit = tmp.iterator();
 					
-					
-					if(tmp != null){
+					while(tmpit.hasNext()){
+						NetworkUtility tmpnu = tmpit.next();
 						
-						portdownAt(tmp);
-						remainSwitch.remove(tmp);
+						portdownAt(tmpnu);
+						remainSwitch.remove(tmpnu);
 						reitr = remainSwitch.iterator();
 						logger.info(tmp.toString());
 						logger.info("haha");
+						
+						
 					}
+
+
+					
+				}
+			}*/
+			
+			private void loopElimate(){
+				
+				ArrayList<NetworkUtility> looplist = (ArrayList<NetworkUtility>) remainSwitch.clone();
+				Iterator<NetworkUtility> reitr = looplist.iterator();
+				
+				while(reitr.hasNext()){
+					NetworkUtility head =reitr.next();
+					
+					if(remainSwitch.indexOf(head) != -1){
+						logger.info("haha in");
+						ArrayList<NetworkUtility> tmplist = (ArrayList<NetworkUtility>) remainSwitch.clone();
+						tmplist.remove(head);
+						
+						looparound(head, head, tmplist, false);
+						
+					}
+
+					
+					
 
 					
 				}
 			}
-			
+			/*
+			private ArrayList<NetworkUtility> delooparound(NetworkUtility head,NetworkUtility next,ArrayList<NetworkUtility> list,boolean islegacy){
+				
+				Iterator<NetworkUtility> itr = list.iterator(); 
+				ArrayList<NetworkUtility> tmp = new ArrayList<NetworkUtility>();
+				
+				while(itr.hasNext()){
+					NetworkUtility nu = itr.next();
+					
+					if(islegacy){
+						if(nu.sdnid == next.sdnid){
+							list.remove(nu);
+							NetworkUtility tmpnu = looparound(head,nu,list,false);
+							if( tmpnu != null ) tmp.add(tmpnu);
+							
+							itr = list.iterator(); 
+					
+						}
+					}else{
+						if(nu.rootset == next.rootset)
+							
+							if(nu.sdnid == head.sdnid){
+								
+								tmp.add(nu);
+								return tmp;
+							}else{
+								list.remove(nu);
+								looparound(head,nu,list,true);
+								NetworkUtility tmpnu = looparound(head,nu,list,false);
+								if( tmpnu != null ) tmp.add(tmpnu);
+								
+								
+							}
+							
+					}
+					
+				}
+
+				
+				return tmp;
+				
+			}
 			private NetworkUtility looparound(NetworkUtility head,NetworkUtility next,ArrayList<NetworkUtility> list,boolean islegacy){
 				
 				Iterator<NetworkUtility> itr = list.iterator(); 
@@ -390,6 +464,74 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 
 				
 				return null;
+				
+			}
+			
+			 
+			 */
+			private void looparound(NetworkUtility head,NetworkUtility next,ArrayList<NetworkUtility> list,boolean islegacy){
+				
+				if(islegacy){
+						Iterator<NetworkUtility> itr = list.iterator();
+						ArrayList <NetworkUtility> tmplist = new ArrayList <NetworkUtility> () ;
+						while(itr.hasNext()){
+							NetworkUtility nu = itr.next();
+							
+							if(nu.sdnid == next.sdnid){
+								tmplist.add(nu);
+							}
+						}
+						
+						Iterator <NetworkUtility> tmpitr = tmplist.iterator();
+						while(tmpitr.hasNext()){
+							
+							NetworkUtility nu = tmpitr.next();
+							ArrayList<NetworkUtility> newlist = (ArrayList<NetworkUtility>) list.clone();
+							newlist.remove(nu);
+							looparound(head,nu,newlist,false);
+						}
+						
+						return;
+						
+						
+				}else{
+						Iterator<NetworkUtility> itr = list.iterator(); 
+						ArrayList <NetworkUtility> tmplist = new ArrayList <NetworkUtility> () ;
+						
+						while(itr.hasNext()){
+
+							NetworkUtility nu = itr.next();
+							
+							if(nu.rootset == next.rootset)
+								
+								if(nu.sdnid == head.sdnid){
+									portdownAt(nu);
+									remainSwitch.remove(nu);
+									logger.info(nu.toString());
+									logger.info("haha get");
+									
+									 return;
+								}else{
+									tmplist.add(nu);	
+									
+								}
+							
+						}
+						Iterator <NetworkUtility> tmpitr = tmplist.iterator();
+						while(tmpitr.hasNext()){
+							NetworkUtility nu = tmpitr.next();
+							ArrayList<NetworkUtility> newlist = (ArrayList<NetworkUtility>) list.clone();
+							newlist.remove(nu);
+							looparound(head,nu,newlist,true);
+						}
+						return;
+						
+				}
+					
+				
+
+				
+				
 				
 			}
 			
@@ -439,7 +581,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 
 
 
-		}// Mytimer
+		}// NetworkmergingManager
 
 }
 
