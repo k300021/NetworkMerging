@@ -615,6 +615,40 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 			}
 			
 			
+			public static boolean blockProt(IFloodlightProviderService floodlightProvider,SwitchPort sw_tup, long host_mac,short hardTimeout, long cookie) {
+    	
+				OFFlowMod fm =(OFFlowMod) floodlightProvider.getOFMessageFactory()
+                                               .getMessage(OFType.FLOW_MOD);
+				List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to
+         													// drop
+				int inputPort = sw_tup.getPort();
+				OFMatch match = new OFMatch();
+				match.setInputPort((short)inputPort);
+         
+				IOFSwitch sw =floodlightProvider.getSwitch(sw_tup.getSwitchDPID());
+         
+				fm.setCookie(cookie)
+					.setHardTimeout((short) 0)
+					.setIdleTimeout((short) 0)
+					.setBufferId(OFPacketOut.BUFFER_ID_NONE)
+					.setMatch(match)
+					.setActions(actions)
+					.setLengthU(OFFlowMod.MINIMUM_LENGTH); // +OFActionOutput.MINIMUM_LENGTH);
+
+				try {
+					if (logger.isDebugEnabled()) {
+						logger.debug("write drop flow-mod sw={} match={} flow-mod={}",
+                           new Object[] { sw, match, fm });
+					}
+				sw.write(fm, null);
+				} catch (IOException e) {
+					logger.error("Failure writing drop flow mod", e);
+				}
+         
+				return true;
+    		
+			}
+			
 
 
 		}// NetworkmergingManager
