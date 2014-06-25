@@ -241,7 +241,10 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 		 remainSwitch.add(nu);
 		 
 	 }
-		 	
+	 
+	 
+
+	//////////////////////////////////////////////////////////////////////////////////////////////	 	
 	 protected class NetworkmergingManager  implements Runnable {
 			
 
@@ -249,7 +252,9 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 
 	        }
 	        		
-	        
+	        private AllboardSwitch(){
+				Collections.sort(borderswitch);
+			}
 	        /*
 	         * this is run
 	         * 
@@ -265,6 +270,7 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 
 				getboarderswitch();
 				lsitall();
+				sortAllboardSwitch();
 				multiPathElimate();
 
 				countremain();
@@ -578,7 +584,37 @@ public class NetworkMerging implements IOFMessageListener, IFloodlightModule {
 				remainSwitch.removeAll(blockSwitch);
 			}
 			
+			private treeconstructor looparound(NetworkUtility head,NetworkUtility next,ArrayList<NetworkUtility> list){
+				
+				Iterator<NetworkUtility> itr = list.iterator(); 
+				while(itr.hasNext()){
+					NetworkUtility nu = itr.next();
+					
+					if(islegacy){
+						if(nu.sdnid == next.sdnid){
+							list.remove(nu);
+							return looparound(head,nu,list,false);			
+						}
+					}else{
+						if(nu.rootset == next.rootset)
+							
+							if(nu.sdnid == head.sdnid){
+								return nu;
+							}else{
+								list.remove(nu);
+								return looparound(head,nu,list,true);
+							}
+							
+					}
+					
+				}
 
+				
+				return null;
+				
+			}
+			
+			
 
 
 		}// NetworkmergingManager
