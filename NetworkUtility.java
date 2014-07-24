@@ -10,7 +10,7 @@ import com.kenai.jaffl.struct.Struct.Unsigned64;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
-public class NetworkUtility implements Comparable<NetworkUtility> {
+public class NetworkUtility {
 	public IOFSwitch inputSwitch;
 	public OFPhysicalPort inputPort;
 	public byte packetData[];
@@ -19,7 +19,6 @@ public class NetworkUtility implements Comparable<NetworkUtility> {
 	public long  rootset;
 	public long sdnid;
 	public int setnum;
-	public int bandwith;
 	
 	
 	public class STP{
@@ -62,17 +61,6 @@ public class NetworkUtility implements Comparable<NetworkUtility> {
 
 	}
 	
-	NetworkUtility(IOFSwitch sw ,OFPhysicalPort po,byte data[],OFPacketIn pi,long sdnid,int bandwith){
-		this.inputSwitch = sw;
-		this.inputPort = po;
-		this.packetData = data;
-		this.packetin = pi;
-		this.sdnid = sdnid ;
-		this.bandwith;
-		legctinf = new STP(packetData);
-
-	}
-	
 	NetworkUtility(IOFSwitch sw ,OFPhysicalPort po){
 		this.inputSwitch = sw;
 		this.inputPort = po;
@@ -84,10 +72,6 @@ public class NetworkUtility implements Comparable<NetworkUtility> {
 			if(this.inputPort.equals(second.inputPort)) return true;	
 		}
 		return false;
-	}
-	
-	public boolean setbandwith(int bandwith){
-		this.bandwith=bandwith;
 	}
 	
 	public void setdata(IOFSwitch inswitch , OFPhysicalPort inport,OFPacketIn pi){
@@ -125,23 +109,6 @@ public class NetworkUtility implements Comparable<NetworkUtility> {
 	public byte[] getpacketdat(){
 		return this.packetData;
 	}
-	
-	public void setdata(byte [] data){
-		this.packetData = data;
-	
-	}
-	
-	public void sdnid(long id){
-		sdnid = id;
-	
-	}
-	
-	public void countdSTPinf(){
-		legctinf = new STP();
-	}
 
-	public int compareTo(NetworkUtility anotherInstance) {
-        return this.bandwith - anotherInstance.bandwith;
-    }
 	
 }
